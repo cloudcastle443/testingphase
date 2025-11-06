@@ -31,6 +31,6 @@ jobs:
       - name: Publish to GitHub Packages
         run: mvn -B -ntp -DskipTests deploy
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-          GITHUB_ACTOR: ${{ github.username }}
+          USERNAME: ${{ vars.USERNAME }}
+          TOKEN: ${{ secrets.TOKEN }}
 
