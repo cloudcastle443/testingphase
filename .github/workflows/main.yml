@@ -1,4 +1,4 @@
-name: Self-Hosted Build & Test (Maven)
+name: Self-Hosted CI/CD (Build, Test, Upload Artifact & Deploy)
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: self-hosted   # <-- EC2 Runner
+  build-test-deploy:
+    runs-on: self-hosted   # EC2 Runner
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -19,5 +19,51 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Maven (if not installed)
+        run: |
+          if ! command -v mvn &> /dev/null
+          then
+            echo "Maven not found. Installing..."
+            sudo apt update
+            sudo apt install -y maven
+          else
+            echo "Maven already installed"
+          fi
+
+      - name: Create settings.xml for GitHub Packages
+        run: |
+          mkdir -p ~/.m2
+          cat <<EOF > ~/.m2/settings.xml
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                    https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${env.USERNAME}</username>
+                <password>${env.TOKEN}</password>
+              </server>
+            </servers>
+
+          </settings>
+          EOF
+        env:
+          USERNAME: ${{ vars.USERNAME }}
+          TOKEN: ${{ secrets.TOKEN }}
+
       - name: Build & Test
         run: mvn -B -ntp clean verify
+
+      - name: Upload Build Artifact (JAR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: testingphase-jar
+          path: target/*.jar
+
+      - name: Deploy to GitHub Packages
+        run: mvn -B -ntp -DskipTests deploy
+        env:
+          USERNAME: ${{ vars.USERNAME }}
+          TOKEN: ${{ secrets.TOKEN }}
