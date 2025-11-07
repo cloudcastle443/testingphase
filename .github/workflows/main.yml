@@ -1,4 +1,4 @@
-name: Build, Test & Publish (Maven → GitHub Packages)
+name: Self-Hosted Build & Test (Maven)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted   # <-- EC2 Runner
 
     steps:
       - name: Checkout
@@ -18,19 +18,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: maven
-
-      - name: Configure Maven settings.xml
-        run: |
-          mkdir -p ~/.m2
-          cp ./settings.xml ~/.m2/settings.xml
 
       - name: Build & Test
         run: mvn -B -ntp clean verify
-
-      - name: Publish to GitHub Packages
-        run: mvn -B -ntp -DskipTests deploy
-        env:
-          USERNAME: ${{ vars.USERNAME }}
-          TOKEN: ${{ secrets.TOKEN }}
-
